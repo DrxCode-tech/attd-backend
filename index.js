@@ -1,85 +1,100 @@
-/*const express = require("express");
-const admin = require("firebase-admin");
+const express = require('express');
+const morgan = require('morgan');
+const cors = require('cors');
+const admin = require('firebase-admin');
 
-const app = express();
-app.use(express.json());
+const PORT = process.env.PORT || 8080;
 
-// 🔑 Initialize Firebase with Railway environment variable
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-
-// Firestore reference
-const db = admin.firestore();
-
-const PORT = process.env.PORT || 3000;
-
-// test route
-app.get("/", (req, res) => {
-  res.send("🚀 Railway + Firebase backend is running!");
-});
-
-// write sample data
-app.post("/api/add", async (req, res) => {
-  try {
-    const { name } = req.body;
-    await db.collection("users").add({ name });
-    res.json({ message: "User added", name });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// read sample data
-app.get("/api/users", async (req, res) => {
-  try {
-    const snapshot = await db.collection("users").get();
-    const users = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-*/
-
-
-const express = require("express");
-const admin = require("firebase-admin");
-const app = express();
-app.use(express.json());
-
-// ✅ Load service account depending on environment
+// ✅ Load Firebase credentials
 let serviceAccount;
-
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  // Running on Railway (environment variable exists)
   serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 } else {
-  // Running locally (fallback to JSON file)
-  serviceAccount = require("./serviceAccountKey.json");
+  serviceAccount = require('./serviceAccountKey.json');
 }
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-app.get("/", (req, res) => {
-  res.send("🚀 Firebase backend is running!");
+const db = admin.firestore();
+
+const app = express();
+app.use(morgan('dev'));
+app.use(express.json());
+app.use(cors());
+
+// Levels for UNIUYO
+const levelArr = ['100', '200', '300', '400', '500'];
+
+// 🔹 Fetch course dates
+app.post('/serverCourse', async (req, res) => {
+  try {
+    const { course } = req.body;
+    if (!course) {
+      return res.status(400).json({ message: "Course not provided!" });
+    }
+
+    const dateSnapshot = await db.collection(course).listDocuments();
+
+    if (!dateSnapshot || dateSnapshot.length === 0) {
+      return res.status(404).json({ message: "No dates found!" });
+    }
+
+    const dateArr = dateSnapshot.map(doc => doc.id);
+    res.status(200).json({ dateArr });
+  } catch (err) {
+    console.error("Server error:", err.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 });
 
-// Example POST route
-app.post("/adexbackend", (req, res) => {
-  res.json({ message: "Data received!", data: req.body });
+// 🔹 Attendance report
+app.post('/server', async (req, res) => {
+  try {
+    const { course, reg, dept } = req.body;
+    if (!course || !reg || !dept) {
+      return res.status(400).json({ message: 'Enter course, reg, and dept!' });
+    }
+
+    // Helper to fetch student name if missing
+    async function fetchName() {
+      for (const level of levelArr) {
+        const stud = await db.collection('UNIUYO').doc(level).collection(dept).doc(reg).get();
+        if (stud.exists) return stud.data().name;
+      }
+      return null;
+    }
+
+    const DB = db.collection(course);
+    const arrDB = await DB.listDocuments();
+    const dates = arrDB.map(arr => arr.id);
+
+    if (!dates.length) {
+      return res.status(400).send({ message: `No dates found under course ${course}` });
+    }
+
+    let numberTimesPresent = 0;
+    let student;
+
+    for (const date of dates) {
+      student = await db.collection(course).doc(date).collection(dept).doc(reg).get();
+      if (student.exists) numberTimesPresent++;
+    }
+
+    let name = student?.data()?.name || await fetchName();
+
+    const pertComing = (numberTimesPresent / dates.length) * 100;
+    const reportdata = { dates, numberTimesPresent, pertComing, name };
+
+    res.status(200).send({ reportdata });
+  } catch (err) {
+    console.error("Server error:", err);
+    res.status(500).send({ message: 'Server error', error: err.message });
+  }
 });
 
-// Railway will set PORT automatically, fallback to 8080 locally
-const PORT = process.env.PORT || 8080;
+// 🔹 Start server
 app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Server running on http://localhost:${PORT}`);
 });
