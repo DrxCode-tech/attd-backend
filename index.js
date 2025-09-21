@@ -2,6 +2,7 @@ const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
 const admin = require('firebase-admin');
+console.log('now all set up');
 
 const PORT = process.env.PORT || 8080;
 
