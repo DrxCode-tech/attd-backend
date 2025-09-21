@@ -96,5 +96,5 @@ app.post('/server', async (req, res) => {
 
 // 🔹 Start server
 app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+  console.log(`✅ Server now running on http://localhost:${PORT}`);
 });
