@@ -2,17 +2,11 @@ const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
 const admin = require('firebase-admin');
-console.log('now all set up');
 
 const PORT = process.env.PORT || 8080;
 
 // ✅ Load Firebase credentials
-let serviceAccount;
-if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-} else {
-  serviceAccount = require('./serviceAccountKey.json');
-}
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
