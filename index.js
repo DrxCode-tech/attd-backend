@@ -76,7 +76,7 @@ app.post('/server', async (req, res) => {
       student = await db.collection(course).doc(date).collection(dept).doc(reg).get();
       if (student.exists) numberTimesPresent++;
     }
-    //would be cool to build ;
+    //would be cool to build...
     let name = student?.data()?.name || await fetchName();
 
     const pertComing = (numberTimesPresent / dates.length) * 100;
