@@ -100,7 +100,6 @@ app.post('/serverCourse', async (req, res) => {
 });
 
 // 3️⃣ Attendance Report (Firebase)
-const levelArr = ['100', '200', '300', '400', '500'];
 
 app.post('/server', async (req, res) => {
   try {
@@ -111,11 +110,9 @@ app.post('/server', async (req, res) => {
 
     // Helper: fetch student name if missing
     async function fetchName() {
-      for (const level of levelArr) {
-        const stud = await fdb.collection('UNIUYO')
-          .doc(level).collection(dept).doc(reg).get();
-        if (stud.exists) return stud.data().name;
-      }
+      const level = reg.split('-')[0];
+      const stud = await fdb.collection('UNIUYO').doc(level).collection(dept).doc(reg).get();
+      if (stud.exists) return stud.data().name;
       return null;
     }
 
